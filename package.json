@@ -1,11 +1,11 @@
 {
-  "name": "ara-audit-nvda",
+  "name": "ara-audit-lecteurs",
   "version": "1.0.0",
   "private": true,
-  "description": "Passe de restitution NVDA + Firefox (base de référence RGAA) pour le skill ara-audit",
+  "description": "Passes de restitution NVDA + Firefox et VoiceOver + Safari (base de référence RGAA) pour le skill ara-audit",
   "type": "module",
   "scripts": {
-    "nvda": "node nvda.mjs sortie"
+    "nvda": "node nvda.mjs sortie", "voiceover": "node voiceover.mjs sortie"
   },
   "dependencies": {
     "@guidepup/guidepup": "0.40.0",
