@@ -1,0 +1,44 @@
+name: nvda
+run-name: nvda ${{ inputs.run }} ${{ inputs.jeton }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      run:
+        description: "Nom du run d'audit (nom de l'artefact : nvda-<run>)"
+        required: true
+      jeton:
+        description: "Identifiant unique de la demande (retrouver le run depuis scripts/nvda.py)"
+        required: true
+      pages:
+        description: 'JSON {"mode": "cible"|"complet", "pages": [{"slug", "url", "cibles": [...]}]}'
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  nvda:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Préparer Windows pour NVDA (Guidepup)
+        run: npx guidepup setup --ci
+      - name: Installer NVDA (version liée à @guidepup/guidepup)
+        run: npx guidepup install nvda
+      - name: Restitution NVDA + Firefox
+        env:
+          PAGES_JSON: ${{ inputs.pages }}
+        run: node nvda.mjs sortie
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: nvda-${{ inputs.run }}
+          path: sortie/
+          if-no-files-found: warn
+          retention-days: 7
