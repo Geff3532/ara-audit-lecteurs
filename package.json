@@ -1,0 +1,15 @@
+{
+  "name": "ara-audit-nvda",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Passe de restitution NVDA + Firefox (base de référence RGAA) pour le skill ara-audit",
+  "type": "module",
+  "scripts": {
+    "nvda": "node nvda.mjs sortie"
+  },
+  "dependencies": {
+    "@guidepup/guidepup": "0.40.0",
+    "@guidepup/setup": "0.29.3",
+    "puppeteer-core": "25.16.0"
+  }
+}
