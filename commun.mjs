@@ -16,7 +16,7 @@ import { join } from "node:path";
 const BANC = JSON.parse(process.env.PAGES_JSON || "{}").banc === true;
 export const ENTREE = BANC ? JSON.parse(readFileSync(new URL("./banc/pages.json", import.meta.url))) : JSON.parse(process.env.PAGES_JSON || "{}");
 export const MODE = ENTREE.mode || "cible";
-const BORNE_PAGE_MS = 8 * 60_000;     // une page ne peut pas bloquer le run
+const BORNE_PAGE_MS = 10 * 60_000;    // une page ne peut pas bloquer le run (VoiceOver : ~30 s par cible, accueil de Neuvy 13 cibles = 6 min)
 const BORNE_SEQUENCE_MS = 90_000;     // mode complet : une séquence au plus 90 s
 export const pause = (ms) => new Promise((r) => setTimeout(r, ms));
 export const sortieDe = (cmd, args) => { try { return execFileSync(cmd, args, { encoding: "utf8" }).trim(); } catch { return null; } };
