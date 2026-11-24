@@ -99,6 +99,7 @@ async function cible(l, c) {
     const pas = c.pas || 6;
     r.fleches = await fleches(pas);
     r.focus_dans_zone = false;   // fait DOM : Tab a posé le focus dans la zone aria-hidden
+    await sr.capture(() => page.evaluate(poserFocus, true));   // les flèches ont déplacé le curseur : Tab doit repartir d'avant la zone
     r.tab = await ecoute(l, async () => {
       for (let i = 0; i < Math.min(pas, (c.focalisables || 0) + 2); i++) {
         await l.tab(); await pause(400);
