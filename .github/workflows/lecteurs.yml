@@ -58,7 +58,7 @@ jobs:
         with:
           node-version: 24
       - run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Préparer macOS pour VoiceOver (Guidepup : automatisation AppleScript de VoiceOver)
+      - name: "Préparer macOS pour VoiceOver (Guidepup : automatisation AppleScript de VoiceOver)"
         run: npx guidepup setup --ci
       - name: Installer les ressources VoiceOver de Guidepup
         run: npx guidepup install voiceover
