@@ -61,6 +61,7 @@ function poserFocus(avant) {
   e.scrollIntoView({ block: "center" });
   let ajoute = false;
   if (e.tabIndex < 0 && !e.hasAttribute("tabindex")) { e.setAttribute("tabindex", "-1"); ajoute = true; }
+  if (document.activeElement === e) e.blur();   // sinon pas d'événement focus : le curseur virtuel de NVDA resterait où les flèches l'ont laissé
   e.focus();
   return { focus_obtenu: document.activeElement === e || e.contains(document.activeElement), tabindex_ajoute: ajoute };
 }
