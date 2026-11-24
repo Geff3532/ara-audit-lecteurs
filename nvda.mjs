@@ -57,7 +57,8 @@ async function main() {
 
   const etape = (cmd) => () => nvda.perform(cmd, { capture: "initial" });   // balayage : la première phrase suffit, 1 s de moins par arrêt
   const lecteur = { nom: "nvda", sr: nvda, page, versLeContenu, direFocus: () => nvda.perform(K.reportCurrentFocus),
-    tab: () => nvda.perform(K.readNextFocusableItem), echap: () => nvda.press("Escape"), activer: () => nvda.act(),
+    // Tab envoyé DANS la page (BiDi) : en mode navigation, le Tab de NVDA part de son curseur virtuel, pas du focus posé (banc 10.8)
+    tab: () => nvda.capture(() => p.keyboard.press("Tab")), echap: () => nvda.press("Escape"), activer: () => nvda.act(),
     arrivee: () => nvda.perform(K.reportTitle),
     debut: () => nvda.perform({ keyCode: [WindowsKeyCodes.Home], modifiers: [WindowsModifiers.Control] }),
     sequences: { titres: [etape(K.moveToNextHeading), 40], reperes: [etape(K.moveToNextLandmark), 20], liens: [etape(K.moveToNextLink), 80],
