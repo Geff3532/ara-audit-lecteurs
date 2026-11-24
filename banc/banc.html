@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><title>Banc lecteurs d'écran</title></head>
+<body>
+<main>
+  <h1>Banc d'essai des lecteurs d'écran</h1>
+  <button id="volet" aria-expanded="false" aria-controls="panneau">Ouvrir le panneau</button>
+  <div id="panneau" hidden><p>Contenu du panneau</p></div>
+  <div role="button" tabindex="0" aria-expanded="false">Menu inerte</div>
+  <button id="ouvrir">Ouvrir la boîte</button>
+  <div id="boite" role="dialog" aria-modal="true" aria-label="Boîte de test" hidden><button id="fermer">Fermer la boîte</button></div>
+  <iframe title="Cadre de test" srcdoc="<p>Contenu du cadre</p>" width="300" height="80"></iframe>
+  <p>Avant la zone cachée</p>
+  <div aria-hidden="true"><p>Texte secret masqué</p><a href="#cache">Lien masqué</a></div>
+  <a href="#apres">Lien après la zone</a>
+  <button>Bouton après la zone</button>
+</main>
+<script>
+  const volet = document.getElementById("volet"), boite = document.getElementById("boite"), ouvrir = document.getElementById("ouvrir");
+  volet.addEventListener("click", () => {
+    const ouvert = volet.getAttribute("aria-expanded") !== "true";
+    volet.setAttribute("aria-expanded", String(ouvert));
+    document.getElementById("panneau").hidden = !ouvert;
+  });
+  const fermer = () => { boite.hidden = true; ouvrir.focus(); };
+  ouvrir.addEventListener("click", () => { boite.hidden = false; document.getElementById("fermer").focus(); });
+  document.getElementById("fermer").addEventListener("click", fermer);
+  boite.addEventListener("keydown", (e) => { if (e.key === "Escape") fermer(); });
+</script>
+</body>
+</html>

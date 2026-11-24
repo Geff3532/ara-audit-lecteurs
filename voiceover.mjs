@@ -1,9 +1,12 @@
 // Passe VoiceOver + Safari (base de référence RGAA), Guidepup, sur macOS (GitHub Actions).
 // Usage : PAGES_JSON='{...}' node voiceover.mjs <sortie>   (format : commun.mjs)
 // Safari réel (/Applications/Safari.app, pas WebKit de Playwright), piloté par safaridriver (WebDriver) pour naviguer et poser
-// le focus ; VoiceOver suit le focus clavier. Tab et Échap passent par WebDriver (une frappe système interromprait la session).
+// le focus ; VoiceOver suit le focus clavier. Option+Tab et Échap passent par WebDriver (une frappe système interromprait la session).
 import { spawn } from "node:child_process";
 import { voiceOver, voiceOverKeyCodeCommands as K, macOSActivate, MacOSApplications } from "@guidepup/guidepup";
+// import profond (pas de champ "exports" dans le package.json de Guidepup) : dernière phrase RÉELLE de VO, pour écarter les échos
+import { lastSpokenPhrase as derniereVO } from "@guidepup/guidepup/lib/macOS/VoiceOver/lastSpokenPhrase.js";
+import { cleanSpokenPhrase } from "@guidepup/guidepup/lib/macOS/VoiceOver/cleanSpokenPhrase.js";
 import { executer, ecrireEnvironnement, MODE, pause, sortieDe, versionPaquet } from "./commun.mjs";
 
 const SORTIE = process.argv[2] || "sortie";
@@ -38,6 +41,9 @@ async function main() {
   const s = `/session/${session.sessionId}`;
   await wd("POST", `${s}/window/rect`, { width: 1280, height: 900 }).catch(() => {});
   const touche = (k) => wd("POST", `${s}/actions`, { actions: [{ type: "key", id: "clavier", actions: [{ type: "keyDown", value: k }, { type: "keyUp", value: k }] }] });
+  // Option+Tab : WebKit inverse tabsToLinks quand Option est enfoncée -> Tab atteint aussi les liens (réglage Safari sans effet en automatisation)
+  const optionTab = () => wd("POST", `${s}/actions`, { actions: [{ type: "key", id: "clavier", actions: [
+    { type: "keyDown", value: "\uE00A" }, { type: "keyDown", value: "\uE004" }, { type: "keyUp", value: "\uE004" }, { type: "keyUp", value: "\uE00A" }] }] });
   const page = { goto: (url) => wd("POST", `${s}/url`, { url }), title: () => wd("GET", `${s}/title`),
     evaluate: (f, a) => wd("POST", `${s}/execute/sync`, { script: `return (${f}).apply(null, arguments)`, args: a === undefined ? [] : [a] }) };
 
@@ -49,13 +55,17 @@ async function main() {
 
   const etape = (cmd) => () => voiceOver.perform(cmd);
   const lecteur = { nom: "voiceover", sr: voiceOver, page, versLeContenu,
-    tab: () => touche(""), echap: () => touche(""), activer: () => voiceOver.act(),
+    // touches WebDriver = actions extérieures à Guidepup : capturées par voiceOver.capture()
+    tab: () => voiceOver.capture(optionTab), echap: () => voiceOver.capture(() => touche("\uE00C")), activer: () => voiceOver.act(),
+    direFocus: () => voiceOver.perform(K.describeItemWithKeyboardFocus),
+    derniere: async () => cleanSpokenPhrase(await derniereVO().catch(() => "")),
+    captureFleches: "initial",   // capture:true coûte jusqu'à 100 sondages osascript par flèche ; les échos sont filtrés par ecoute()
     debut: () => page.evaluate(() => { const e = document.querySelector("a[href],button,[tabindex]"); e?.focus(); e?.blur(); window.scrollTo(0, 0); }),
     sequences: { titres: [etape(K.findNextHeading), 40], reperes: [() => voiceOver.nextLandmark(), 20], liens: [etape(K.findNextLink), 80],
       graphiques: [etape(K.findNextGraphic), 40], controles: [etape(K.findNextControl), 40], cadres: [etape(K.moveToNextFrame), 10],
-      tab: [() => touche(""), 60] } };
+      tab: [() => voiceOver.capture(optionTab), 60] } };
 
-  await voiceOver.start({ capture: "initial" });
+  await voiceOver.start({ capture: true });   // toute la parole d'une commande, pas seulement la première phrase
   try {
     await executer(lecteur, SORTIE);
   } finally {

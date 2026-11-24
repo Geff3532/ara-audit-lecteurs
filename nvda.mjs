@@ -39,14 +39,24 @@ async function main() {
     }
     await p.bringToFront();
     await p.evaluate(() => { document.body.focus(); document.body.click(); document.body.blur(); });
-    for (const c of [K.readNextFocusableItem, K.toggleBetweenBrowseAndFocusMode, K.toggleBetweenBrowseAndFocusMode, K.exitFocusMode]) {
+    // puppeteer démarre sur about:blank : le focus SYSTÈME reste dans l'interface de Firefox (focus JS trompeur, focusmanager.testmode).
+    // F6 fait passer barre d'adresse -> page ; NVDA+Tab (focus système) doit annoncer « <titre>, document ».
+    let contenu = false;
+    for (let i = 0; i < 5 && !contenu; i++) {
+      await nvda.perform(K.reportCurrentFocus);
+      contenu = /,\s*document\b/i.test(await nvda.lastSpokenPhrase());
+      if (!contenu) { await nvda.perform({ keyCode: [WindowsKeyCodes.F6], modifiers: [] }, { capture: false }); await pause(500); }
+    }
+    if (!contenu) console.warn(`NVDA : focus système hors du document (« ${await nvda.lastSpokenPhrase()} »)`);
+    for (const c of [K.toggleBetweenBrowseAndFocusMode, K.toggleBetweenBrowseAndFocusMode, K.exitFocusMode]) {
       await nvda.perform(c, { capture: false });
       await pause(150);
     }
+    return contenu;
   }
 
-  const etape = (cmd) => () => nvda.perform(cmd);
-  const lecteur = { nom: "nvda", sr: nvda, page, versLeContenu,
+  const etape = (cmd) => () => nvda.perform(cmd, { capture: "initial" });   // balayage : la première phrase suffit, 1 s de moins par arrêt
+  const lecteur = { nom: "nvda", sr: nvda, page, versLeContenu, direFocus: () => nvda.perform(K.reportCurrentFocus),
     tab: () => nvda.perform(K.readNextFocusableItem), echap: () => nvda.press("Escape"), activer: () => nvda.act(),
     arrivee: () => nvda.perform(K.reportTitle),
     debut: () => nvda.perform({ keyCode: [WindowsKeyCodes.Home], modifiers: [WindowsModifiers.Control] }),
@@ -54,7 +64,7 @@ async function main() {
       graphiques: [etape(K.moveToNextGraphic), 40], champs: [etape(K.moveToNextFormField), 30], boutons: [etape(K.moveToNextButton), 30],
       cadres: [etape(K.moveToNextFrame), 10], tab: [etape(K.readNextFocusableItem), 60] } };
 
-  await nvda.start();
+  await nvda.start({ capture: true });   // toute la parole d'une commande, pas seulement la première phrase
   try {
     await executer(lecteur, SORTIE);
   } finally {

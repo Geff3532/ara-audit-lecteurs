@@ -15,7 +15,7 @@ on:
         required: true
         default: "nvda,voiceover"
       pages:
-        description: 'JSON {"mode": "cible"|"complet", "pages": [{"slug", "url", "cibles": [...]}]}'
+        description: 'JSON {"mode": "cible"|"complet", "pages": [{"slug", "url", "cibles": [...]}]}, ou {"banc": true} : page témoin banc/banc.html, échec si le harnais ne capture pas'
         required: true
 
 permissions:
