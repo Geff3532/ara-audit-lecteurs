@@ -1,11 +1,13 @@
 // Logique commune aux passes NVDA + Firefox et VoiceOver + Safari : mêmes cibles, même format de sortie.
 // Entrée (variable PAGES_JSON) : {"mode": "cible"|"complet", "pages": [{"slug", "url", "cibles": [...]}]}
-// Cible : {id, test, type: "composant"|"lecture"|"cadre"|"cache", requete, index?, nom?, texte?, src?, pas?, tabs?, focalisables?}
+// Cible : {id, test, type: "composant"|"lecture"|"cadre"|"cache"|"parcours", requete, index?, nom?, texte?, src?, pas?, tabs?, focalisables?, touches?}
 //   composant (7.1)          : focus sur l'élément, annonce, activation par le lecteur, annonce + états ARIA avant/après, Échap
 //   lecture (1.3, 1.6, 4.13) : focus sur l'élément, annonce, puis `pas` éléments suivants (curseur du lecteur)
 //   cadre (4.13, iframe)     : focus sur l'iframe, annonce, puis `tabs` Tab DANS le cadre : `interieur` = [{parole, item, dans_cadre}]
 //                              (les flèches depuis l'iframe lisaient ce qui SUIT le cadre : Neuvy 24/11, cible 4.13-f3)
 //   cache (10.8)             : focus juste avant la zone cachée, curseur puis Tab sur la zone : le texte caché est-il lu ?
+//   parcours (10.8)          : focus sur l'élément, annonce, puis chaque touche de `touches` envoyée DANS la page (flèches d'une
+//                              galerie) : `etapes` = [{touche, parole, item, actif}] ; `actif` = fait DOM sur l'élément focalisé
 // Mode "complet" (option) : séquences bornées (titres, repères, liens, graphiques, champs, boutons, cadres, 60 Tab).
 // Capture : Guidepup n'enregistre la parole que pendant SES commandes ; une action extérieure (focus posé en JS, touche WebDriver)
 // doit passer par sr.capture(), sinon le journal reste vide (essai du 24/11/2026 : toutes les annonces au focus vides).
@@ -56,6 +58,16 @@ function lireEtat() {
     focus: ((a?.tagName || "").toLowerCase() + " " + (a?.getAttribute("aria-label") || a?.textContent || "").replace(/\s+/g, " ").trim()).slice(0, 80) };
 }
 
+// élément focalisé : de quoi le reconnaître, et le conteneur aria-hidden="true" qui le cache aux lecteurs (null sinon)
+function actif() {
+  const a = document.activeElement;
+  if (!a || a === document.body) return null;
+  const h = a.closest('[aria-hidden="true"]');
+  return { tag: a.tagName.toLowerCase(), id: a.id || null, "data-hook": a.getAttribute("data-hook"), cible: a.hasAttribute("data-lecteur-cible"),
+    nom: (a.getAttribute("aria-label") || a.textContent || "").replace(/\s+/g, " ").trim().slice(0, 80),
+    cache: h && { tag: h.tagName.toLowerCase(), id: h.id || null, "data-hook": h.getAttribute("data-hook") } };
+}
+
 // focus sur la cible (ou, pour une zone cachée, sur ce qui la précède) ; tabindex=-1 ajouté seulement si l'élément n'est pas focalisable
 function poserFocus(avant) {
   let e = document.querySelector("[data-lecteur-cible]");
@@ -68,7 +80,7 @@ function poserFocus(avant) {
   return { focus_obtenu: document.activeElement === e || e.contains(document.activeElement), tabindex_ajoute: ajoute };
 }
 
-// --- côté Node. `l` (lecteur) : {nom, sr, page, versLeContenu() -> false si le focus n'atteint pas le document, tab(), echap(),
+// --- côté Node. `l` (lecteur) : {nom, sr, page, versLeContenu() -> false si le focus n'atteint pas le document, tab(), touche(nom de touche), echap(),
 //   activer(), direFocus(), derniere?() (VO : dernière phrase réelle), captureFleches?, arrivee?(), debut(), sequences}
 // page : {goto(url), title(), evaluate(fn, arg)}
 // `parole` = ce qui a été DIT ; `item` = information seulement (VO : texte sous le curseur VO, jamais vide ; NVDA : copie de parole).
@@ -139,6 +151,12 @@ async function cible(l, c) {
       a.dans_cadre = await page.evaluate(() => document.activeElement === document.querySelector("[data-lecteur-cible]"));
       r.interieur.push(a);
       if (!a.dans_cadre) break;   // sorti du cadre : ce dernier arrêt (hors cadre) dit où va le focus
+    }
+  } else if (c.type === "parcours") {
+    r.etapes = [];
+    for (const k of c.touches || ["ArrowRight"]) {
+      const a = await ecoute(l, () => l.touche(k), 600);
+      r.etapes.push({ touche: k, ...a, actif: await page.evaluate(actif) });
     }
   } else {
     r.suite = await fleches(c.pas || 3);

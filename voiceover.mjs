@@ -40,6 +40,7 @@ async function main() {
   ecrireEnvironnement(SORTIE, env);
   const s = `/session/${session.sessionId}`;
   await wd("POST", `${s}/window/rect`, { width: 1280, height: 900 }).catch(() => {});
+  const CLES = { ArrowLeft: "\uE012", ArrowUp: "\uE013", ArrowRight: "\uE014", ArrowDown: "\uE015" };   // codes WebDriver
   const touche = (k) => wd("POST", `${s}/actions`, { actions: [{ type: "key", id: "clavier", actions: [{ type: "keyDown", value: k }, { type: "keyUp", value: k }] }] });
   // Option+Tab : WebKit inverse tabsToLinks quand Option est enfoncée -> Tab atteint aussi les liens (réglage Safari sans effet en automatisation)
   const optionTab = () => wd("POST", `${s}/actions`, { actions: [{ type: "key", id: "clavier", actions: [
@@ -56,7 +57,7 @@ async function main() {
   const etape = (cmd) => () => voiceOver.perform(cmd);
   const lecteur = { nom: "voiceover", sr: voiceOver, page, versLeContenu,
     // touches WebDriver = actions extérieures à Guidepup : capturées par voiceOver.capture()
-    tab: () => voiceOver.capture(optionTab), echap: () => voiceOver.capture(() => touche("\uE00C")), activer: () => voiceOver.act(),
+    tab: () => voiceOver.capture(optionTab), touche: (k) => voiceOver.capture(() => touche(CLES[k] || k)), echap: () => voiceOver.capture(() => touche("\uE00C")), activer: () => voiceOver.act(),
     direFocus: () => voiceOver.perform(K.describeItemWithKeyboardFocus),
     derniere: async () => cleanSpokenPhrase(await derniereVO().catch(() => "")),
     captureFleches: "initial",   // capture:true coûte jusqu'à 100 sondages osascript par flèche ; les échos sont filtrés par ecoute()

@@ -3,5 +3,6 @@
  {"id": "7.1-inerte", "test": "7.1", "type": "composant", "requete": "button,[role=button]", "nom": "Menu inerte", "index": 1},
  {"id": "7.1-boite", "test": "7.1", "type": "composant", "requete": "button,[role=button]", "nom": "Ouvrir la boîte", "index": 2},
  {"id": "4.13-cadre", "test": "4.13", "type": "cadre", "requete": "iframe", "nom": "Lecteur vidéo témoin", "index": 0, "tabs": 4},
- {"id": "10.8-zone", "test": "10.8", "type": "cache", "requete": "[aria-hidden=\"true\"]", "texte": "Texte secret masqué", "pas": 4, "focalisables": 1}
+ {"id": "10.8-zone", "test": "10.8", "type": "cache", "requete": "[aria-hidden=\"true\"]", "texte": "Texte secret masqué", "pas": 4, "focalisables": 1},
+ {"id": "10.8-parcours", "test": "10.8", "type": "parcours", "requete": ".vignette", "index": 0, "nom": "Photo 1", "touches": ["ArrowRight", "ArrowRight"]}
 ]}]}

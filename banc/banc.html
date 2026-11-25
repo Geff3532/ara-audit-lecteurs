@@ -15,6 +15,12 @@
   <div aria-hidden="true"><p>Texte secret masqué</p><a href="#cache">Lien masqué</a></div>
   <a href="#apres">Lien après la zone</a>
   <button>Bouton après la zone</button>
+  <!-- galerie témoin (motif Wix pro-gallery) : vignettes 2 et 3 VISIBLES mais dans un conteneur aria-hidden, focus déplacé aux flèches -->
+  <div id="galerie" style="display:flex;gap:8px">
+    <div aria-hidden="false"><div class="vignette" role="button" tabindex="0" aria-label="Photo 1">Photo 1</div></div>
+    <div aria-hidden="true"><div class="vignette" role="button" tabindex="-1" aria-label="Photo 2">Photo 2</div></div>
+    <div aria-hidden="true"><div class="vignette" role="button" tabindex="-1" aria-label="Photo 3">Photo 3</div></div>
+  </div>
 </main>
 <script>
   const volet = document.getElementById("volet"), boite = document.getElementById("boite"), ouvrir = document.getElementById("ouvrir");
@@ -27,6 +33,15 @@
   ouvrir.addEventListener("click", () => { boite.hidden = false; document.getElementById("fermer").focus(); });
   document.getElementById("fermer").addEventListener("click", fermer);
   boite.addEventListener("keydown", (e) => { if (e.key === "Escape") fermer(); });
+  const vignettes = [...document.querySelectorAll(".vignette")];
+  document.getElementById("galerie").addEventListener("keydown", (e) => {
+    const sens = { ArrowRight: 1, ArrowLeft: -1 }[e.key], i = vignettes.indexOf(e.target);
+    if (!sens || i < 0) return;
+    e.preventDefault();
+    const v = vignettes[(i + sens + vignettes.length) % vignettes.length];
+    vignettes.forEach((x) => x.setAttribute("tabindex", x === v ? "0" : "-1"));
+    v.focus();
+  });
 </script>
 </body>
 </html>
