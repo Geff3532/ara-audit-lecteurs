@@ -32,12 +32,14 @@ export function verifier(res) {
   exiger(dit(z?.tab), "10.8-zone : rien capturé au Tab");
   exiger(z?.focus_dans_zone === true, "10.8-zone : Tab n'a pas atteint le lien de la zone cachée (fait DOM)");
   exiger(/lien après/.test(texte(z?.tab)), "10.8-zone : Tab n'atteint pas les liens (tabsToLinks Safari ?)");
-  // parcours : seuls les faits DOM sont exigés (les flèches ont atteint la page) ; la parole sur une vignette cachée EST le résultat
-  // mesuré, pas un critère de santé (la capture d'une touche envoyée dans la page est déjà contrôlée par le Tab de 10.8-zone)
+  // parcours : sur les vignettes cachées, seuls les faits DOM sont exigés (la parole y EST le résultat mesuré) ; la 3e flèche revient
+  // sur Photo 1, visible : sa parole est le témoin positif de la capture des touches (sinon toute galerie réelle sortirait NC)
   const g = c["10.8-parcours"];
   exiger(annonce(g) && /photo 1/.test(texte(g.annonce) + texte(g.annonce_demandee)), "10.8-parcours : focus sur la 1re vignette non annoncé");
   ["Photo 2", "Photo 3"].forEach((n, k) => exiger(g?.etapes?.[k]?.actif?.nom === n && !!g.etapes[k].actif.cache,
     `10.8-parcours : Flèche droite n° ${k + 1} n'a pas posé le focus sur « ${n} » (cachée)`));
+  exiger(g?.etapes?.[2]?.actif?.nom === "Photo 1" && dit(g.etapes[2]) && /photo 1/.test(texte(g.etapes[2])),
+    "10.8-parcours : Flèche droite n° 3 (retour sur Photo 1, visible) non restituée : capture des touches cassée");
   return ko;
 }
 
@@ -54,7 +56,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       { ...p("Sous-titres, bouton"), dans_cadre: true }, { ...p("Lien masqué"), dans_cadre: false }] },
     { id: "10.8-zone", fleches: p("Avant la zone cachée"), tab: p("Lien masqué. Lien après la zone. Bouton après la zone"), focus_dans_zone: true },
     { id: "10.8-parcours", annonce: p("Photo 1, bouton"), etapes: ["Photo 2", "Photo 3"].map((nom) => ({ touche: "ArrowRight", ...vide,
-      actif: { tag: "div", nom, cache: { tag: "div", id: null, "data-hook": null } } })) }] };
+      actif: { tag: "div", nom, cache: { tag: "div", id: null, "data-hook": null } } }))
+      .concat({ touche: "ArrowRight", ...p("Photo 1, bouton"), actif: { tag: "div", nom: "Photo 1", cache: null } }) }] };
   assert.deepStrictEqual(verifier(bon), []);
   const neuvy = structuredClone(bon); neuvy.cibles[0].annonce = vide; neuvy.cibles[0].etat_apres["aria-expanded"] = "false"; neuvy.cibles[4].tab = vide;
   assert.deepStrictEqual(verifier(neuvy), ["7.1-volet : focus non annoncé", "7.1-volet : l'activation n'a pas ouvert le volet", "10.8-zone : rien capturé au Tab",
@@ -70,8 +73,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   assert.deepStrictEqual(verifier({ ...bon, focus_contenu: false }), ["page : focus système hors du document (interface du navigateur)"]);
   assert.ok(verifier({ cibles: [] }).length >= 6);
   // flèches non reçues par la page : focus resté sur la 1re vignette -> le banc doit échouer
-  const fige = structuredClone(bon); fige.cibles[5].etapes.forEach((x) => { x.actif = { nom: "Photo 1", cache: null }; });
+  const fige = structuredClone(bon); fige.cibles[5].etapes.slice(0, 2).forEach((x) => { x.actif = { nom: "Photo 1", cache: null }; });
   assert.deepStrictEqual(verifier(fige), ["10.8-parcours : Flèche droite n° 1 n'a pas posé le focus sur « Photo 2 » (cachée)",
     "10.8-parcours : Flèche droite n° 2 n'a pas posé le focus sur « Photo 3 » (cachée)"]);
+  // touche capturée muette (table CLES de VO, capture BiDi de NVDA cassées) : la parole de Photo 1 visible manque -> le banc doit échouer
+  const sourd = structuredClone(bon); Object.assign(sourd.cibles[5].etapes[2], vide);
+  assert.deepStrictEqual(verifier(sourd), ["10.8-parcours : Flèche droite n° 3 (retour sur Photo 1, visible) non restituée : capture des touches cassée"]);
   console.log("verifier.mjs : auto-test OK");
 }
