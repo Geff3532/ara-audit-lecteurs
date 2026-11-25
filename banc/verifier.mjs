@@ -24,6 +24,10 @@ export function verifier(res) {
   exiger(dit(b?.apres_activation), "7.1-boite : rien capturé après activation");
   exiger(b?.etat_apres_echap?.dialogues === 0, "7.1-boite : Échap n'a pas fermé la boîte");
   exiger(annonce(f), "4.13-cadre : focus non annoncé");
+  const dedans = (f?.interieur || []).filter((a) => a.dans_cadre);
+  exiger(dedans.length >= 2, "4.13-cadre : Tab n'a pas parcouru les commandes du cadre (fait DOM)");
+  exiger(/lecture/.test(dedans.map(texte).join(" ")), "4.13-cadre : commande « Lecture » du cadre non restituée");
+  exiger(f?.interieur?.at(-1)?.dans_cadre === false, "4.13-cadre : sortie du cadre non atteinte (Tab bloqué dedans ?)");
   exiger(dit(z?.fleches), "10.8-zone : rien capturé aux flèches");
   exiger(dit(z?.tab), "10.8-zone : rien capturé au Tab");
   exiger(z?.focus_dans_zone === true, "10.8-zone : Tab n'a pas atteint le lien de la zone cachée (fait DOM)");
@@ -40,7 +44,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       etat_avant: { "aria-expanded": "false" }, etat_apres: { "aria-expanded": "true" } },
     { id: "7.1-inerte", annonce: vide, annonce_demandee: p("Menu inerte bouton"), apres_activation: vide, etat_apres: { "aria-expanded": "false" } },
     { id: "7.1-boite", annonce: p("Ouvrir la boîte"), apres_activation: p("Boîte de test dialogue"), etat_apres: { dialogues: 1 }, etat_apres_echap: { dialogues: 0 } },
-    { id: "4.13-cadre", annonce: p("Cadre de test, cadre") },
+    { id: "4.13-cadre", annonce: p("Lecteur vidéo témoin, cadre"), interieur: [{ ...p("Lecture, bouton bascule, non enfoncé"), dans_cadre: true },
+      { ...p("Sous-titres, bouton"), dans_cadre: true }, { ...p("Lien masqué"), dans_cadre: false }] },
     { id: "10.8-zone", fleches: p("Avant la zone cachée"), tab: p("Lien masqué. Lien après la zone. Bouton après la zone"), focus_dans_zone: true }] };
   assert.deepStrictEqual(verifier(bon), []);
   const neuvy = structuredClone(bon); neuvy.cibles[0].annonce = vide; neuvy.cibles[0].etat_apres["aria-expanded"] = "false"; neuvy.cibles[4].tab = vide;
@@ -50,6 +55,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const muet = structuredClone(bon);
   for (const x of muet.cibles) for (const k of ["annonce", "annonce_demandee", "apres_activation", "fleches", "tab"]) if (x[k]) x[k] = { parole: [""], item: ["libellé button"] };
   assert.ok(verifier(muet).length >= 7, verifier(muet).join(" | "));
+  // Neuvy 24/11 : le lecteur annonce le cadre puis lit ce qui le SUIT -> le banc doit échouer
+  const dehors = structuredClone(bon); dehors.cibles[3].interieur = [{ ...p("Lien masqué"), dans_cadre: false }];
+  assert.deepStrictEqual(verifier(dehors), ["4.13-cadre : Tab n'a pas parcouru les commandes du cadre (fait DOM)",
+    "4.13-cadre : commande « Lecture » du cadre non restituée"]);
   assert.deepStrictEqual(verifier({ ...bon, focus_contenu: false }), ["page : focus système hors du document (interface du navigateur)"]);
   assert.ok(verifier({ cibles: [] }).length >= 5);
   console.log("verifier.mjs : auto-test OK");

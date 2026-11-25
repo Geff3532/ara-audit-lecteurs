@@ -1,8 +1,10 @@
 // Logique commune aux passes NVDA + Firefox et VoiceOver + Safari : mêmes cibles, même format de sortie.
 // Entrée (variable PAGES_JSON) : {"mode": "cible"|"complet", "pages": [{"slug", "url", "cibles": [...]}]}
-// Cible : {id, test, type: "composant"|"lecture"|"cache", requete, index?, nom?, texte?, src?, pas?, focalisables?}
+// Cible : {id, test, type: "composant"|"lecture"|"cadre"|"cache", requete, index?, nom?, texte?, src?, pas?, tabs?, focalisables?}
 //   composant (7.1)          : focus sur l'élément, annonce, activation par le lecteur, annonce + états ARIA avant/après, Échap
 //   lecture (1.3, 1.6, 4.13) : focus sur l'élément, annonce, puis `pas` éléments suivants (curseur du lecteur)
+//   cadre (4.13, iframe)     : focus sur l'iframe, annonce, puis `tabs` Tab DANS le cadre : `interieur` = [{parole, item, dans_cadre}]
+//                              (les flèches depuis l'iframe lisaient ce qui SUIT le cadre : Neuvy 24/11, cible 4.13-f3)
 //   cache (10.8)             : focus juste avant la zone cachée, curseur puis Tab sur la zone : le texte caché est-il lu ?
 // Mode "complet" (option) : séquences bornées (titres, repères, liens, graphiques, champs, boutons, cadres, 60 Tab).
 // Capture : Guidepup n'enregistre la parole que pendant SES commandes ; une action extérieure (focus posé en JS, touche WebDriver)
@@ -127,6 +129,17 @@ async function cible(l, c) {
       r.apres_echap = await ecoute(l, () => l.echap(), 1000);
       r.etat_apres_echap = await page.evaluate(lireEtat);
     }
+  } else if (c.type === "cadre") {
+    // fait DOM, même pour un cadre d'une autre origine : document.activeElement du parent reste l'iframe tant que le focus est dedans.
+    // shortcut: un Tab avalé par le cadre (focus immobile) compte « dans_cadre » ; lire activeElement du cadre (contexte de frame
+    // WebDriver) si ce cas apparaît.
+    r.interieur = [];
+    for (let i = 0; i < (c.tabs || 3); i++) {
+      const a = await ecoute(l, () => l.tab(), 400);
+      a.dans_cadre = await page.evaluate(() => document.activeElement === document.querySelector("[data-lecteur-cible]"));
+      r.interieur.push(a);
+      if (!a.dans_cadre) break;   // sorti du cadre : ce dernier arrêt (hors cadre) dit où va le focus
+    }
   } else {
     r.suite = await fleches(c.pas || 3);
   }
@@ -188,9 +201,11 @@ const BUDGET_JOB_MS = 20 * 60_000;   // sous les timeout-minutes du workflow (VO
 // Parcourt les pages de l'entrée et écrit <sortie>/<slug>.json ; environnement.json est écrit par l'appelant.
 export async function executer(l, sortie) {
   mkdirSync(sortie, { recursive: true });
-  const serveur = BANC && createServer((_, rep) => rep.writeHead(200, { "content-type": "text/html; charset=utf-8" })
-    .end(readFileSync(new URL("./banc/banc.html", import.meta.url)))).listen(8765, "127.0.0.1")
-    .on("error", (e) => { console.error(`serveur du banc : ${e}`); process.exitCode = 1; });
+  // banc : la page témoin, et sur un AUTRE port (autre origine, comme une carte ou une vidéo intégrée) le lecteur média de son cadre
+  const servir = (fichier, port) => createServer((_, rep) => rep.writeHead(200, { "content-type": "text/html; charset=utf-8" })
+    .end(readFileSync(new URL(`./banc/${fichier}`, import.meta.url)))).listen(port, "127.0.0.1")
+    .on("error", (e) => { console.error(`serveur du banc (${fichier}) : ${e}`); process.exitCode = 1; });
+  const serveurs = BANC ? [servir("banc.html", 8765), servir("media.html", 8766)] : [];
   const tJob = Date.now();
   try {
     for (const p of ENTREE.pages || []) {
@@ -211,7 +226,7 @@ export async function executer(l, sortie) {
       }
     }
   } finally {
-    if (serveur) serveur.close();
+    for (const s of serveurs) s.close();
   }
 }
 

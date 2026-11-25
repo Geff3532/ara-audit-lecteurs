@@ -9,7 +9,8 @@
   <div role="button" tabindex="0" aria-expanded="false">Menu inerte</div>
   <button id="ouvrir">Ouvrir la boîte</button>
   <div id="boite" role="dialog" aria-modal="true" aria-label="Boîte de test" hidden><button id="fermer">Fermer la boîte</button></div>
-  <iframe title="Cadre de test" srcdoc="<p>Contenu du cadre</p>" width="300" height="80"></iframe>
+  <!-- cadre de média témoin, autre origine (port 8766, servi par commun.mjs) : 2 commandes à restituer DE L'INTÉRIEUR -->
+  <iframe title="Lecteur vidéo témoin" src="http://127.0.0.1:8766/media.html" width="320" height="90"></iframe>
   <p>Avant la zone cachée</p>
   <div aria-hidden="true"><p>Texte secret masqué</p><a href="#cache">Lien masqué</a></div>
   <a href="#apres">Lien après la zone</a>
