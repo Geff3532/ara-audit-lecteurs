@@ -46,7 +46,7 @@ jobs:
           name: nvda-${{ inputs.run }}
           path: sortie/
           if-no-files-found: warn
-          retention-days: 7
+          retention-days: 3
 
   voiceover:
     if: contains(inputs.lecteurs, 'voiceover')
@@ -74,4 +74,4 @@ jobs:
           name: voiceover-${{ inputs.run }}
           path: sortie/
           if-no-files-found: warn
-          retention-days: 7
+          retention-days: 3
